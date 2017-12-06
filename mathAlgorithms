@@ -1,0 +1,215 @@
+#coding=utf-8
+import string
+
+
+def whichAlgorithm(problem):
+    if ("—").decode("utf-8") in problem:
+        problem = problem.replace(("—").decode("utf-8"), "-")
+    problem = str(problem)
+#analyzes the math problem and determines which algorithm should be applied
+    if ("*" in problem or "+" in problem and "-" not in problem and
+         "//" not in problem and "%" not in problem):
+        return mostArithmetic(problem)
+    if ("//" in problem and "+" not in problem and "-" not in problem and
+         "*" not in problem and "%" not in problem):
+        return integerDivide(problem)
+    if ("%" in problem and "+" not in problem and "-" not in problem and 
+        "*" not in problem and "//" not in problem):
+        return mod(problem)
+    if ("+" in problem or "-" in problem and "*" not in problem and 
+        "/" not in problem and "//" not in problem and "%" not in problem):
+        return additionAndSubtraction(problem)
+
+def mod(problem):
+    problem = problem.strip()
+    if "=" in problem:
+        problem = problem[:-1]
+    split = problem.index("%")
+    num1 = int(problem[:split])
+    num2 = int(problem[split+1:])
+    return num1%num2
+
+
+def parseProblem(problem):
+    result = []
+    num = ""
+    temp = problem
+    for item in temp:
+        if item in string.digits:
+            num += item
+        if item == "+":
+            result.append(int(num))
+            result.append(item)
+            num = ""
+        elif item == "-":
+            result.append(int(num))
+            result.append("-")
+            num = ""
+        elif item == "*":
+            result.append(int(num))
+            result.append(item)
+            num = ""
+        elif item == "/":
+            result.append(int(num))
+            result.append(item)
+            num = ""
+    result.append(int(num))
+    return(result)
+
+def mostArithmetic(problem):
+    ans = 0
+    if "=" in problem:
+        problem = problem.strip()
+    values = parseProblem(problem)
+    l = len(values)
+    while "*" in values:
+        for index in range(l):
+            if values[index] == "*":
+                ans += (values[index-1]*values[index+1])
+                values = values[:index-1]+values[index+2:]
+                values.insert(index-1, ans)
+                ans=0
+            if "*" not in values: break
+    result = additionAndSubtraction(values)
+    return result
+
+
+def integerDivide(problem):
+    problem = problem.strip()
+    if "=" in problem:
+        problem = problem[:-1]
+    split = problem.index("//")
+    num1 = int(problem[:split])
+    num2 = int(problem[split+2:])
+    return num1//num2
+
+def derivative(problem):
+    pass
+
+# def justAddition(problem):
+#     ans = 0
+#     problem = problem.strip()
+#     if "=" in problem:
+#         problem = problem[:-1]
+#     problem = problem.strip()
+#     values = problem.split("+")
+#     for num in values:
+#         ans += int(num)
+#     return ans
+
+def additionAndSubtraction(problem):
+    if ("—").decode("utf-8") in problem:
+        problem = problem.replace(("—").decode("utf-8"), "-")
+    ans = 0
+    if isinstance(problem, str):
+        problem = problem.strip()
+        problem = parseProblem(problem)
+    if "=" in problem:
+        problem = problem[:-1]
+    if isinstance(problem[0], int) or type(problem[0])==unicode:
+        ans += int(problem[0])
+    for index in range(len(problem)):
+        if problem[index] == "+":
+            ans += int(problem[index+1])
+        if problem[index] == "-":
+            ans -= int(problem[index+1])
+    return ans
+
+def justMultiplication(problem):
+    answer = 1
+    problem = problem.strip()
+    if "=" in problem:
+        problem = problem[:-1]
+    problem = problem.strip()
+    values = problem.split("*")
+    for item in values:
+        answer *= int(item)
+    return answer
+
+
+############################
+#test functions
+############################
+def testWhichAl():
+    test1 = "4+2+7"
+    test2 = "10-2-3"
+    test3 = "8*9"
+    test4 = " 8+5 = "
+    test5 = "8*3+4"
+    test6 = "3%2 "
+    test7 = "27//4 = "
+    test8 = "50-10-5+3"
+    assert(whichAlgorithm(test1) == 13)
+    assert(whichAlgorithm(test2) == 5)
+    assert(whichAlgorithm(test3) == 72)
+    assert(whichAlgorithm(test4) == 13)
+    assert(whichAlgorithm(test5) == None)
+    assert(whichAlgorithm(test6) == 3%2)
+    assert(whichAlgorithm(test7) == 27//4)
+    assert(whichAlgorithm(test8) == 50-10-5+3)
+
+def testJustAddition():
+    test1 = "12+2+30 = "
+    test2 = "5+3+9+10"
+    test3 = "3+9+2+1 ="
+    assert(justAddition(test1) == 44)
+    assert(justAddition(test2) == 27)
+    assert(justAddition(test3) == 15)
+
+def testParseProblem():
+    test1 = "5+6-7*8"
+    test2 = "7*10-22+3"
+    test3 = "123+67-25*3"
+    assert(parseProblem(test1) == [5, '+', 6, '-', 7, '*', 8])
+    assert(parseProblem(test2) == [7, "*", 10, "-", 22, "+", 3])
+    assert(parseProblem(test3) == [123, "+", 67, "-", 25, "*", 3])
+
+def testAdditionAndSubtraction():
+    test1 = "1+2-3-4+5="
+    test2 = "6+3+1-4"
+    test3 = "10-6+3-2"
+    assert(additionAndSubtraction(test1) == 1)
+    assert(additionAndSubtraction(test2) == 6)
+    assert(additionAndSubtraction(test3) == 5)
+
+def testJustMultiplication():
+    test1 = "4*3*2="
+    test2 = "12*2*1"
+    test3 = "3*7*2"
+    assert(justMultiplication(test1) == 24)
+    assert(justMultiplication(test2) == 24)
+    assert(justMultiplication(test3) == 42)
+
+def testMod():
+    test1 = "71 % 34 = "
+    test2 = "900 %31="
+    test3 = "65%7012 =  "
+    assert(mod(test1) == 71%34)
+    assert(mod(test2) == 900%31)
+    assert(mod(test3) == 65%7012)
+
+def testIntegerDivide():
+    test1 = "74//21 ="
+    test2 = "7//2"
+    test3 = "923//41 ="
+    assert(integerDivide(test1) == 74//21)
+    assert(integerDivide(test2) == 7//2)
+    assert(integerDivide(test3) == 923//41) 
+
+def testMostArithmetic():
+    test1 = "6*9-3*10"
+    test2 = "10+4-3*2"  
+    assert(mostArithmetic(test1) == 6*9-3*10)
+    assert(mostArithmetic(test2) == 10+4-3*2)
+
+def testAll():
+    testWhichAl()
+    testJustMultiplication()
+    testJustAddition()
+    testMod()
+    testIntegerDivide()
+    testParseProblem()
+    testAdditionAndSubtraction()
+
+# testMostArithmetic()
+
