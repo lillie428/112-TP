@@ -1,0 +1,337 @@
+#coding=utf-8
+#Lillie Widmayer
+#TP prelim code
+
+from __future__ import print_function
+from __future__ import division
+from mathAlgorithms import *
+from Tkinter import *
+import pytesseract
+from PIL import Image, ImageTk
+import cv2
+import os
+
+def init(data):
+    data.gameState = "start"
+    data.startButtonCx = data.width/2
+    data.startButtonCy = 2*data.height/3
+    data.startButtonLength = 57
+    data.startButtonHeight = 15
+    data.buttonLength = 100
+    data.buttonHeight = 50
+    data.equation = ""
+    data.fileName = ""
+    data.inputH = 40
+    data.inputL = 20
+    data.menuButtonx = 100
+    data.menuButtony = 40
+    data.menuButtonc = data.height/4
+    data.margin = 50
+    data.numberBarx = 100
+    data.side = 75
+    data.bottomBar = data.margin+100
+
+
+
+def drawStart(canvas, data):
+    canvas.create_rectangle(-5,-5, data.width+5, data.height+5, fill="plum")
+    canvas.create_text(data.width/2, data.height/3, text="MathMate", font="Impact 50")
+    canvas.create_text(data.startButtonCx, data.startButtonCy, 
+        text=("Press enter to continue"), font="Times 20")
+
+def drawIntro(canvas, data):
+    canvas.create_rectangle(-5,-5, data.width+5, data.height+5, fill="cadetblue1")
+    canvas.create_rectangle(data.width/2-data.menuButtonx, 
+        data.menuButtonc-data.menuButtony, data.width/2 + data.menuButtonx,
+        data.menuButtonc+data.menuButtony, fill = "seagreen1", 
+        activefill="seagreen3")
+    canvas.create_text(data.width/2, data.menuButtonc, text="Use Camera", 
+        font="Impact 30")
+    canvas.create_rectangle(data.width/2-data.menuButtonx, 
+        2*data.menuButtonc-data.menuButtony, data.width/2 + data.menuButtonx,
+        2*data.menuButtonc+data.menuButtony, fill = "seagreen1", 
+        activefill="seagreen3")
+    canvas.create_text(data.width/2, 2*data.menuButtonc, text="Load Image", 
+        font="Impact 30")
+    canvas.create_rectangle(data.width/2-data.menuButtonx, 
+        3*data.menuButtonc-data.menuButtony, data.width/2 + data.menuButtonx,
+        3*data.menuButtonc+data.menuButtony, fill = "seagreen1",
+        activefill="seagreen3")
+    canvas.create_text(data.width/2, 3*data.menuButtonc, text="Instructions", 
+        font="Impact 30")
+
+
+def homeButton(canvas, data):
+    canvas.create_rectangle(data.width-50, data.height-50, data.width-10,
+        data.height-10, fill="RoyalBlue1")   
+    canvas.create_text(data.width-30, data.height-30, text="Home", 
+        font="Times 10")
+
+def doMathCamera(canvas, data):
+    canvas.create_rectangle(-10, -10, data.width+10, data.height+10, 
+        fill="mediumpurple1")
+    homeButton(canvas, data)
+    ans = whichAlgorithm(data.equation)
+    if ans != None:
+        if "=" in data.equation:
+            canvas.create_text(data.width/2, data.height/2,
+               text=("%s %s" % (data.equation, ans)), font="Impact 50")
+        else:
+            canvas.create_text(data.width/2, data.height/2,
+                text=("%s = %s" % (data.equation, ans)), font="Impact 50")
+    else:    
+        data.gameState = "cameraError"
+
+def doMathLoad(canvas, data):
+    data.equation = data.equation.replace(("—").decode("utf-8"), "-")
+    canvas.create_rectangle(-10, -10, data.width+10, data.height+10, 
+        fill="mediumpurple1")
+    homeButton(canvas, data)
+    ans = whichAlgorithm(data.equation)
+    if ans != None:
+        print("ok")
+        if "=" in data.equation:
+            canvas.create_text(data.width/2, data.height/2,
+               text=("%s %s" % (data.equation, ans)), font="Impact 50")
+        else:
+            canvas.create_text(data.width/2, data.height/2,
+                text=("%s = %s" % (data.equation, ans)), font="Impact 50")
+    else:    
+        print("fuckmeup")
+        data.gameState = "loadError"
+
+def drawNumberButton(canvas, data, row, col):
+    x0 = (row)*data.side+data.numberBarx
+    y0 = (col)*data.side+data.bottomBar
+    x1 = (row+1)*data.side+data.numberBarx
+    y1 = (col+1)*data.side+data.bottomBar
+    canvas.create_rectangle(x0,y0,x1,y1, fill="orange2", width=15)
+
+def instructions(canvas,data):
+    canvas.create_rectangle(-10, -10, data.width+10, data.height+10, 
+        fill="plum")
+    homeButton(canvas, data)
+    textBlock = """When using the camera to take a photo of a math problem be
+
+    sure you are in a well-lit area and only the math problem is in the frame.
+
+    Sometimes, a picture might need to be retaken in better lighting.
+
+
+    To load an image into MathMate, make sure the photo is saved in the same 
+    folder as MathMate."""
+    canvas.create_text(data.width, 20, text=textBlock, font="Times 20", anchor="w")
+
+
+def cameraErrorScreen(canvas, data):
+    canvas.create_rectangle(-10, -10, data.width+10, data.height+10, 
+        fill="mediumpurple1")
+    canvas.create_rectangle(data.width/2-45, data.height/2 + 40, 
+        data.width/2+45, data.height/2+70, fill="RoyalBlue1")   
+    canvas.create_text(data.width/2, data.height/2+55, text="Try Again", 
+        font="Times 15")
+    canvas.create_text(data.width/2, data.height/2, font="Impact 20",
+        text="          Uh Oh! \n Retake Picture")
+    homeButton(canvas,data)
+
+
+def loadErrorScreen(canvas, data):
+    canvas.create_rectangle(-10, -10, data.width+10, data.height+10, 
+        fill="mediumpurple1")
+    homeButton(canvas, data)
+    canvas.create_text(data.width/2, data.height/2, 
+        text="Equation type not \n yet supported")
+
+def openCamera():
+#modified from Vasu's github code snippets
+    window_name = "Camera"
+    cam_index = 0
+    cv2.namedWindow(window_name)
+    cap = cv2.VideoCapture(cam_index)
+    cap.open(cam_index)
+# Loop until spacebar is pressed
+    while True:
+        ret, frame = cap.read()
+        if frame is not None:
+            cv2.imshow(window_name, frame)
+        k = cv2.waitKey(1) & 0xFF
+        if k == 32:
+#take photo if spacebar is pressed
+            ret, picture = cap.read()
+            cv2.imshow(window_name, picture)
+            cv2.imwrite("mathImage.png", picture)
+            break
+
+def solveEquation(data):
+    fileName = "mathImage.png"
+    image = cv2.imread(fileName)
+    data.equation = pytesseract.image_to_string(Image.open(fileName))
+
+
+def notFoundScreen(canvas, data):
+    canvas.create_rectangle(-10, -10, data.width+10, data.height+10, 
+        fill="mediumpurple1")
+    canvas.create_text(data.width/2, data.height/2, font="Impact 20",
+        text="Uh oh! File not Found")
+    homeButton(canvas,data)
+
+def loadImage(data):
+    try:
+        image = cv2.imread(data.fileName)
+        data.equation = pytesseract.image_to_string(Image.open(data.fileName))
+        data.gameState = "doMathLoad"
+    except:
+        data.gameState = "notFound"
+
+def inputWindow(data):
+    user = Tk()
+    user.title("Input")
+    userInput = StringVar()
+    e = Entry(user, textvariable = userInput)
+    e.pack()
+    def callBack():
+        data.fileName = e.get()
+        user.destroy()
+        loadImage(data)
+    b = Button(user, text="Enter", command=callBack)
+    b.pack()   
+    user.mainloop()
+
+
+def mousePressed(event, data):
+    if data.gameState == "intro":
+        if (event.x > data.width/2-data.menuButtonx and event.x < data.width/2 
+            + data.menuButtonx):
+            if (event.y > data.menuButtonc-data.menuButtony and 
+                              event.y < data.menuButtonc+data.menuButtony):
+                    openCamera()
+                    solveEquation(data)
+                    data.gameState = "doMathCamera"
+
+        if (event.x > data.width/2-data.menuButtonx and event.x < data.width/2 
+                + data.menuButtonx):
+            if (event.y > 2*data.menuButtonc-data.menuButtony and 
+                event.y < 2*data.menuButtonc+data.menuButtony):
+                inputWindow(data)
+                data.equation = ""
+
+        if (event.x > data.width/2-data.menuButtonx and event.x < data.width/2 
+                + data.menuButtonx):
+            if (event.y > 3*data.menuButtonc-data.menuButtony and 
+                            event.y < 3*data.menuButtonc+data.menuButtony):
+                    data.gameState = "instructions"
+
+    if data.gameState == "doMathLoad":
+        if (event.x > data.width-50 and event.x < data.width-10):
+            if (event.y > data.height-50 and event.y < data.height-10):
+                data.gameState = "intro"
+
+    if data.gameState == "cameraError":
+        if (event.x > data.width/2-45 and event.x < data.width/2+45):
+            if (event.y > data.height/2+40 and event.y < data.height/2+70):
+                openCamera()
+                solveEquation(data)
+                data.gameState = "doMathCamera"
+
+        if (event.x > data.width-50 and event.x < data.width-10):
+            if (event.y > data.height-50 and event.y < data.height-10):
+                data.gameState = "intro"
+                cv2.destroyAllWindows()
+
+    if data.gameState == "loadError":
+        if (event.x > data.width-50 and event.x < data.width-10):
+            if (event.y > data.height-50 and event.y < data.height-10):
+                data.gameState = "intro"
+
+    if data.gameState == "doMathCamera":
+        if (event.x > data.width-50 and event.x < data.width-10):
+            if (event.y > data.height-50 and event.y < data.height-10):
+                cv2.destroyAllWindows()
+                data.gameState = "intro"
+
+    if data.gameState == "notFound":
+        if (event.x > data.width-50 and event.x < data.width-10):
+            if (event.y > data.height-50 and event.y < data.height-10):
+                data.gameState = "intro"
+
+    if data.gameState == "instructions":
+        if (event.x > data.width-50 and event.x < data.width-10):
+            if (event.y > data.height-50 and event.y < data.height-10):
+                data.gameState = "intro"        
+
+
+def keyPressed(event, data):
+    if data.gameState == "start":
+        if event.keysym == "Return":
+            data.gameState = "intro"
+
+def timerFired(data):
+    pass
+
+def redrawAll(canvas, data):
+    if data.gameState == "start":
+        drawStart(canvas, data)
+    elif data.gameState == "intro":
+        drawIntro(canvas, data)
+    elif data.gameState == "instructions":
+        instructions(canvas,data)
+    elif data.gameState == "doMathCamera":
+        doMathCamera(canvas, data)
+    elif data.gameState == "doMathLoad":
+        doMathLoad(canvas,data)
+    elif data.gameState == "loadError":
+        loadErrorScreen(canvas, data)
+    elif data.gameState == "cameraError":
+        cameraErrorScreen(canvas, data)
+    elif data.gameState == "error":
+        errorScreen(canvas, data)
+    elif data.gameState == "notFound":
+        notFoundScreen(canvas, data)
+
+
+
+###############################
+#run function from 112 Website
+###############################
+
+def run(width=300, height=300):
+    def redrawAllWrapper(canvas, data):
+        canvas.delete(ALL)
+        canvas.create_rectangle(0, 0, data.width, data.height,
+                                fill='white', width=0)
+        redrawAll(canvas, data)
+        canvas.update()    
+
+    def mousePressedWrapper(event, canvas, data):
+        mousePressed(event, data)
+        redrawAllWrapper(canvas, data)
+
+    def keyPressedWrapper(event, canvas, data):
+        keyPressed(event, data)
+        redrawAllWrapper(canvas, data)
+
+    def timerFiredWrapper(canvas, data):
+        timerFired(data)
+        redrawAllWrapper(canvas, data)
+        canvas.after(data.timerDelay, timerFiredWrapper, canvas, data)
+    class Struct(object): pass
+    data = Struct()
+    data.width = width
+    data.height = height
+    data.timerDelay = 100 # milliseconds
+    data.root = Tk()
+    data.root.title("Math Mate")
+    init(data)
+    canvas = Canvas(data.root, width=data.width, height=data.height)
+    canvas.pack()
+    data.root.bind("<Button-1>", lambda event:
+                            mousePressedWrapper(event, canvas, data))
+    data.root.bind("<Key>", lambda event:
+                            keyPressedWrapper(event, canvas, data))
+    timerFiredWrapper(canvas, data)
+    data.root.resizable(width=False, height=False) #disables user from changing
+    # screen size
+    data.root.mainloop()
+    print("bye!")
+
+run(500, 500)
